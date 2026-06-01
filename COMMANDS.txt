@@ -1,0 +1,152 @@
+MAZE AGENTS — quick command reference
+everything runs from the "Machine Learning" folder
+right-click the folder -> open in terminal, or just cd there
+
+  cd "C:\Users\ardac\Desktop\Machine Learning"
+
+
+=== STEP 1: pick a maze ===
+
+open config.py and change MAZE_ID near the top
+
+  MAZE_ID = 1   ->  16x16 (small, trains fast, start here)
+  MAZE_ID = 2   ->  25x25 (medium)
+  MAZE_ID = 3   ->  35x35 (hard, has spikes, takes longer)
+
+save it, then run whatever agent you want below
+
+
+=== STEP 2: run an agent ===
+
+DQN3  (tensorflow, double dqn — upgraded DQN with overoptimism fix)
+  python agents/dqn3_train.py
+
+DQN3_CUDA  (same algorithm, GPU/speed-optimised — @tf.function + batch 128 + train every 2 steps)
+  python agents/DQN3_CUDA_train.py
+
+SAC  (stable-baselines3)
+  python agents/sac_train.py
+
+  test only (needs a saved model in Results/SAC/ already):
+  python agents/sac_train.py --test-only
+
+SARSA  (tabular)
+  python agents/sarsa_train.py
+
+PPO  (pytorch, lasse's version with behaviour cloning + masking)
+  python agents/ppo_train.py
+
+each one saves results to Results/<AGENT>/ automatically
+
+
+=== STEP 3: compare everything ===
+
+run after training at least one agent
+
+  python compare_agents.py              <- all mazes/agents found
+  python compare_agents.py --maze 1     <- just maze 1
+  python compare_agents.py --maze 2
+  python compare_agents.py --maze 3
+  python compare_agents.py --window 100 <- smoother curves (default is 50)
+
+saves figures to Results/comparison/:
+  comparison_maze1.png    6-panel dashboard
+  comparison_maze2.png
+  comparison_maze3.png
+  cross_maze_summary.png  all agents across all mazes (only if >1 maze trained)
+
+the 6 panels are:
+  top row:   learning curve (smoothed reward) / rolling solve rate / steps per ep
+  bottom:    final reward bar / final solve% bar / kpi table
+
+
+=== what gets saved (per agent) ===
+
+Results/DQN3/
+  training_DQN3_maze<N>.csv         episode, total_reward, steps, solved, avg_loss, epsilon
+  dqn3_model_maze<N>.keras          tensorflow weights
+  maze_layout_maze<N>.png
+  episode_animation_maze<N>.gif
+  training_plot_DQN3_maze<N>.png
+
+Results/SAC/
+  training_SAC_maze<N>.csv          episode, total_reward, steps, solved, timestep, ...
+  sac_model_maze<N>.zip             final model
+  sac_best_maze<N>.zip              best checkpoint during training
+  maze_layout_maze<N>.png
+  episode_animation_maze<N>.gif
+  training_plot_SAC_maze<N>.png
+
+Results/SARSA/
+  training_SARSA_maze<N>.csv        episode, total_reward, steps, solved, epsilon
+  maze_layout_maze<N>.png
+  episode_animation_maze<N>.gif
+  training_plot_SARSA_maze<N>.png
+
+Results/PPO/
+  training_PPO_maze<N>.csv          episode, total_reward, steps, solved, ppo_update
+  training_PPO_maze<N>_updates.csv  rollout-level stuff (ppo specific)
+  ppo_checkpoint_maze<N>.pt         weights + metadata
+  maze_layout_maze<N>.png
+  episode_animation_maze<N>.gif
+  training_plot_PPO_maze<N>.png
+
+Results/comparison/
+  comparison_maze<N>.png
+  cross_maze_summary.png
+
+<N> = whatever MAZE_ID you had set in config.py when you ran it
+
+
+=== quick tuning (config.py) ===
+
+DQN3:
+  EPISODES        1500 default, more if not converged
+  EPSILON_DECAY   lower = explores longer
+  LEARNING_RATE   dont go above 0.001
+  GAMMA           keep high (0.99+) bc paths are long
+  TAU             0.005 (soft target update, smoother than hard sync)
+
+SAC:
+  TIMESTEPS       bump up if it hasnt converged (maze2/3 need more)
+  EXIT_REWARD     keep at 200, otherwise entropy dominates
+  HIDDEN_SIZE     256 default
+
+SARSA:
+  EPISODES        5000, tabular needs lots of passes
+  ALPHA           0.2 learning rate
+  EPSILON_DECAY   0.999
+
+PPO:
+  UPDATES         160 ppo update iterations
+  ROLLOUT_STEPS   512 steps per rollout
+  BC_EPOCHS       300 pre-training epochs on bfs paths (runs before ppo)
+  CLIP_EPSILON    0.18, controls how much policy can change per update
+
+
+=== install deps (once) ===
+
+  pip install tensorflow numpy matplotlib stable-baselines3 gymnasium torch pandas
+
+tensorflow needs python 3.8-3.11
+stable-baselines3 pulls in pytorch automatically
+pandas needed for compare_agents.py
+
+
+=== project layout ===
+
+Machine Learning/
+  config.py               maze selection + all hyperparams
+  compare_agents.py       comparison dashboard
+  visualisation.py        shared utils (maze render, gif, plots) — imported by agents
+  agents/
+    dqn3_train.py
+    sac_train.py
+    sarsa_train.py
+    ppo_train.py
+  maps/
+    maze_1/               16x16 maze
+    maze_2/               25x25
+    maze_3/               35x35 with spikes
+  Results/
+    DQN3/  SAC/  SARSA/  PPO/  comparison/

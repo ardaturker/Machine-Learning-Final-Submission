@@ -1,0 +1,10 @@
+numpy
+pandas
+matplotlib
+tensorflow
+torch
+torchvision
+gymnasium
+stable-baselines3
+pillow
+windows-curses
